@@ -1,19 +1,33 @@
-const { FileCreateTransaction, ContractCreateTransaction, FileAppendTransaction, Hbar, PrivateKey, TokenId, AccountId } = require('@hashgraph/sdk');
-const { initializeClientOperator } = require('./client-operator');
+const { ContractFunctionParameters, ContractExecuteTransaction, FileAppendTransaction, Hbar, PrivateKey, TokenId, AccountId } = require('@hashgraph/sdk');
+const { initializeClientOperator, initializeTreaserClientOperator } = require('./client-operator');
 const { associateToken, transferTokens } = require('./hts');
 const { accountBalanceQuery } = require('./account-balance-query');
-const { getUserWalletBalance, deposit, deployContract, associateTokenWithUser } = require('./functions');
+const { getUserWalletBalance, deposit, associateTokenWithUser } = require('./functions');
+const {deployAllContracts, deploySwapHederaContract, stepsToSwapNewTokens, approveTransaction} = require('./deployContracts');
+const {getBalances} = require('./getAllAcoountBalances');
+
 require("dotenv").config();
 
 async function deploy() {
-    console.log('////////// Setting up Client to connect with Hedera Testnet //////////')
-
     const client = initializeClientOperator();
 
-    console.log('\n////////// Importing smart contract bytecode //////////')
 
-    // DEX Contract
-    const newContractId = deployContract(client);
+    // Hedera Swap Contract
+    const newContractId = await deploySwapHederaContract();
+    console.log("after contract deploy \n\n ID: "+newContractId);
+    const value = await getBalances();
+    console.log("1 time balance fetched\n\n");
+    //const approve = await approveTransaction(newContractId);
+    //console.log("approveTransaction done\n\n");
+    const swapResult = await stepsToSwapNewTokens(newContractId);
+    console.log("2 stepsToSwapNewTokens done\n\n");
+    const value2 = await getBalances();
+}
+
+function decodeEvent(eventName, log, topics) {
+    const eventAbi = abi.find(event => (event.name === eventName && event.type === "event"));
+    const decodedLog = web3.eth.abi.decodeLog(eventAbi.inputs, log, topics);
+    return decodedLog;
 }
 
 async function stepsToSwap() {
