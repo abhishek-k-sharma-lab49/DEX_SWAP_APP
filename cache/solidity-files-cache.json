@@ -772,8 +772,8 @@
       ]
     },
     "/Users/abhishek.k.sharma/Documents/workspace/Hedera/NewAppFromScratch/DEX_SWAP_APP/contracts/SwapHederaTokens.sol": {
-      "lastModificationDate": 1658226414305,
-      "contentHash": "5f88315d4d038ba343050d343b45d350",
+      "lastModificationDate": 1658384058288,
+      "contentHash": "d5725b2511e011a90ab11fbdc15c50bc",
       "sourceName": "contracts/SwapHederaTokens.sol",
       "solcConfig": {
         "version": "0.8.4",
@@ -803,7 +803,7 @@
         "./HederaResponseCodes.sol"
       ],
       "versionPragmas": [
-        ">=0.8.0 <0.9.3"
+        "^0.8.0"
       ],
       "artifacts": [
         "SwapHederaTokens"

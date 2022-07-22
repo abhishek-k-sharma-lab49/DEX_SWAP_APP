@@ -16,7 +16,7 @@ async function getBalances() {
     const tokenAId = TokenId.fromString(process.env.TOKEN_A_ID);
     const tokenBId = TokenId.fromString(process.env.TOKEN_B_ID);
 
-    const contractId = AccountId.fromString('0.0.47706022');
+    const contractId = AccountId.fromString('0.0.47712502');
     
 
     console.log('Treasury, DEX, and token addresses (in Solidity address format');
@@ -40,8 +40,8 @@ async function getBalances() {
     console.log(' My Account');
     const response4 = await accountBalanceQuery(client, myAccountId);
 
-    console.log(' My Contract Balance');
-    //const response5 = await accountBalanceQuery(client, contractId);
+    // console.log(' My Contract Balance');
+    // const response5 = await accountBalanceQuery(client, contractId);
     return true;
 }
 

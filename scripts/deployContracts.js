@@ -20,11 +20,60 @@ async function appendFile(client, bytecodeFileId, contents, fileKey) {
     return await txSecondResponse.getReceipt(client);
 }
 
-async function stepsToSwapNewTokens(newContractId) {
+async function swapTokens(newContractId) {
     console.log("OSR ID");
     console.log(process.env.TREASURY_ACCOUNT_ID);
     const treasuryId = AccountId.fromString(process.env.TREASURY_ACCOUNT_ID);
-    const traderId = AccountId.fromString(process.env.TRADER_ACCOUNT_ID);
+    const treasuryKey = PrivateKey.fromString(process.env.TREASURY_PRIVATE_KEY);
+    const tokenAId = TokenId.fromString(process.env.TOKEN_A_ID);
+    const tokenBId = TokenId.fromString(process.env.TOKEN_B_ID);
+    const client = initializeClientOperator();
+    console.log("OSR IDs");
+    console.log(treasuryId);
+    console.log(tokenAId);
+    console.log(tokenBId);
+    console.log(newContractId);
+    const addLiquidityContractQuery = await new ContractExecuteTransaction()
+    .setContractId(newContractId)
+    .setGas(2000000)
+    .setFunction("swapToken",
+     new ContractFunctionParameters()
+        .addAddress(treasuryId.toSolidityAddress())
+        .addAddress(tokenAId.toSolidityAddress())
+        .addAddress(tokenBId.toSolidityAddress())
+        .addInt64(10)
+        .addInt64(0)
+    )
+    .freezeWith(client)
+    .sign(treasuryKey)
+    
+    
+    const addLiquidityResult = await addLiquidityContractQuery.execute(client);
+     const addLiquidityRecord = await addLiquidityResult.getRecord(client);
+    // addLiquidityRecord.contractFunctionResult.logs.forEach(log => {
+    //     const logStringHex = ('0x'.concat(Buffer.from(log.data).toString('hex')));
+
+    //     const logTopics = []
+    //     log.topics.forEach(topic => {
+    //         logTopics.push('0x'.concat(Buffer.from(topic).toString('hex')));
+    //     });
+
+    //     const event = decodeEvent('addLiquidity', logStringHex, logTopics.slice(1));
+    //     withdrawAmount = event.withdrawAmount;
+
+    //     console.log(`User deposited ${amount} ${coin} and received ${withdrawAmount} ${coin === 'tokenA' ? 'tokenB' : 'tokenA'} in return`);
+    // });
+
+    //console.log('\x1b[32m%s\x1b[0m', '////////// Executing transfer between wallets (REAL TOKENS MOVING AROUND HERE) //////////');
+
+    return addLiquidityRecord;
+}
+
+async function addLiquidity(newContractId) {
+    console.log("OSR ID");
+    console.log(process.env.TREASURY_ACCOUNT_ID);
+    const treasuryId = AccountId.fromString(process.env.TREASURY_ACCOUNT_ID);
+    const treasuryKey = PrivateKey.fromString(process.env.TREASURY_PRIVATE_KEY);
     const tokenAId = TokenId.fromString(process.env.TOKEN_A_ID);
     const tokenBId = TokenId.fromString(process.env.TOKEN_B_ID);
     const client = initializeTreaserClientOperator();
@@ -34,32 +83,35 @@ async function stepsToSwapNewTokens(newContractId) {
     console.log(tokenBId);
     console.log(newContractId);
     const addLiquidityContractQuery = await new ContractExecuteTransaction()
-    .setGas(100000)
     .setContractId(newContractId)
-    .setFunction('addLiquidity',
+    .setGas(2000000)
+    .setFunction("addLiquidity",
      new ContractFunctionParameters()
-        .addAddress(tokenAId.toSolidityAddress())
         .addAddress(treasuryId.toSolidityAddress())
-        .addInt64(50)
+        .addAddress(tokenAId.toSolidityAddress())
         .addAddress(tokenBId.toSolidityAddress())
-        .addInt64(50)
+        .addInt64(500)
+        .addInt64(500)
     )
+    .freezeWith(client)
+    .sign(treasuryKey)
+    
     
     const addLiquidityResult = await addLiquidityContractQuery.execute(client);
-    const addLiquidityRecord = await addLiquidityResult.getRecord(client);
-    addLiquidityRecord.contractFunctionResult.logs.forEach(log => {
-        const logStringHex = ('0x'.concat(Buffer.from(log.data).toString('hex')));
+     const addLiquidityRecord = await addLiquidityResult.getRecord(client);
+    // addLiquidityRecord.contractFunctionResult.logs.forEach(log => {
+    //     const logStringHex = ('0x'.concat(Buffer.from(log.data).toString('hex')));
 
-        const logTopics = []
-        log.topics.forEach(topic => {
-            logTopics.push('0x'.concat(Buffer.from(topic).toString('hex')));
-        });
+    //     const logTopics = []
+    //     log.topics.forEach(topic => {
+    //         logTopics.push('0x'.concat(Buffer.from(topic).toString('hex')));
+    //     });
 
-        const event = decodeEvent('addLiquidity', logStringHex, logTopics.slice(1));
-        withdrawAmount = event.withdrawAmount;
+    //     const event = decodeEvent('addLiquidity', logStringHex, logTopics.slice(1));
+    //     withdrawAmount = event.withdrawAmount;
 
-        console.log(`User deposited ${amount} ${coin} and received ${withdrawAmount} ${coin === 'tokenA' ? 'tokenB' : 'tokenA'} in return`);
-    });
+    //     console.log(`User deposited ${amount} ${coin} and received ${withdrawAmount} ${coin === 'tokenA' ? 'tokenB' : 'tokenA'} in return`);
+    // });
 
     //console.log('\x1b[32m%s\x1b[0m', '////////// Executing transfer between wallets (REAL TOKENS MOVING AROUND HERE) //////////');
 
@@ -428,7 +480,8 @@ async function deployTokenBContract() {
 module.exports =  {
     deployAllContracts,
     deploySwapHederaContract,
-    stepsToSwapNewTokens,
+    addLiquidity,
+    swapTokens,
     approveTransaction
 }
 
