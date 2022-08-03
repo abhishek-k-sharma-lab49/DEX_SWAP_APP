@@ -1,0 +1,10 @@
+{
+  "_format": "hh-sol-artifact-1",
+  "contractName": "NestedERC20Contract",
+  "sourceName": "contracts/ERC20Contract.sol",
+  "abi": [],
+  "bytecode": "0x6080604052348015600f57600080fd5b50603f80601d6000396000f3fe6080604052600080fdfea2646970667358221220c5bdb41e0546d6d4d6e4c7c454e4f33dc10f56ceffe0f8e728eea6d194264a1864736f6c63430008040033",
+  "deployedBytecode": "0x6080604052600080fdfea2646970667358221220c5bdb41e0546d6d4d6e4c7c454e4f33dc10f56ceffe0f8e728eea6d194264a1864736f6c63430008040033",
+  "linkReferences": {},
+  "deployedLinkReferences": {}
+}

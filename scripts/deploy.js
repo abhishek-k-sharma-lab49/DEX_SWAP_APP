@@ -3,7 +3,7 @@ const { initializeClientOperator, initializeTreaserClientOperator } = require('.
 const { associateToken, transferTokens } = require('./hts');
 const { accountBalanceQuery } = require('./account-balance-query');
 const { getUserWalletBalance, deposit, associateTokenWithUser } = require('./functions');
-const {deployAllContracts, deploySwapHederaContract, swapTokens, approveTransaction, addLiquidity} = require('./deployContracts');
+const {deployAllContracts, deploySwapHederaContract, deployTokenContract, swapTokens, approveTransaction, addLiquidity} = require('./deployContracts');
 const {getBalances} = require('./getAllAcoountBalances');
 
 require("dotenv").config();
@@ -13,14 +13,16 @@ async function deploy() {
 
 
     // Hedera Swap Contract
-    const newContractId = '0.0.47717682';//await deploySwapHederaContract();
+    //const newContractId = '0.0.47717682';//await deploySwapHederaContract();
+    const newContractId = await deployTokenContract();
+    console.log(`OSR New Contract ID: ${newContractId}`)
     //const value0 = await getBalances();
     //const result = await addLiquidity(newContractId);
-    const value = await getBalances();
-    console.log("1 time balance fetched\n\n");
-    const swapResult = await swapTokens(newContractId);
-    console.log("\n\n2 stepsToSwapNewTokens done\n\n");
-    const value2 = await getBalances();
+    // const value = await getBalances();
+    // console.log("1 time balance fetched\n\n");
+    // const swapResult = await swapTokens(newContractId);
+    // console.log("\n\n2 stepsToSwapNewTokens done\n\n");
+    // const value2 = await getBalances();
 }
 
 function decodeEvent(eventName, log, topics) {

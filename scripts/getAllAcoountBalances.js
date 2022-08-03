@@ -45,6 +45,7 @@ async function getBalances() {
     return true;
 }
 
+//getBalances();
 module.exports = {
     getBalances
 }

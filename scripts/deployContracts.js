@@ -150,11 +150,87 @@ async function approveTransaction(contract) {
     console.log("The transaction consensus status is " +transactionStatus.toString());
 }
 
+async function deployNewSwapContract() {
+    const treasuryId = AccountId.fromString(process.env.TREASURY_ACCOUNT_ID);
+    const traderId = AccountId.fromString(process.env.TRADER_ACCOUNT_ID);
+    const tokenAId = TokenId.fromString(process.env.TOKEN_A_ID);
+    const tokenBId = TokenId.fromString(process.env.TOKEN_B_ID);
+    const client = initializeClientOperator();
+
+    //return process.env.LAST_CONTRACT;
+    // REMOVE ABOVE RETURN IF YOU WANT TO RE_DEPLOY THE CONTRACT
+    console.log('\n////////// Creating OSR Swap Contract');
+    let contractJson = require('../artifacts/contracts/SwapHederaTokens.sol/SwapHederaTokens.json');
+    const bytecode = contractJson.bytecode;
+    const bytecodeLength = bytecode.length;
+
+    bytecodeFirstQuarter = bytecode.substring(0, bytecodeLength / 5);
+    bytecodeSecondQuarter = bytecode.substring(bytecodeLength / 5, bytecodeLength * 2 / 5);
+    bytecodeThirdQuarter = bytecode.substring(bytecodeLength * 2 / 5, bytecodeLength * 3 / 5);
+    bytecodeFourthQuarter = bytecode.substring(bytecodeLength * 3 / 5, bytecodeLength * 4 / 5);
+    bytecodeFifthQuarter = bytecode.substring(bytecodeLength * 4 / 5);
+
+    // Create a file on Hedera and store the hex-encoded bytecode
+    // need to sign file transaction with keys so can append other parts of bytecode to it
+    const fileKey = await PrivateKey.generateED25519();
+    const filePublicKey = fileKey.publicKey;
+    console.log('\n////////// Swap Contract File Creation Transaction');
+    const fileCreateTx = new FileCreateTransaction()
+        .setKeys([filePublicKey])           // sign file with public key
+        .setContents(bytecodeFirstQuarter)
+        .freezeWith(client);
+    // sign file create transaction with fileKey (private)
+    const signTx = await fileCreateTx.sign(fileKey);
+    // Submit file to Hedera test net signing with the transaction fee payer key specified in client
+    const submitTx = await signTx.execute(client);
+    // Get receipt of the file create transaction
+    const fileReceipt = await submitTx.getReceipt(client);
+    // Get file ID from the receipt
+    const bytecodeFileId = fileReceipt.fileId;
+
+    // APPEND REST OF BYTECODE TO FILE
+    // append second part of bytecode
+    const secondReceipt = await appendFile(client, bytecodeFileId, bytecodeSecondQuarter, fileKey);
+    console.log('Appending Second part of file status:', secondReceipt.status.toString());
+    // append third part of bytecode
+    const thirdReceipt = await appendFile(client, bytecodeFileId, bytecodeThirdQuarter, fileKey);
+    console.log('Appending Third part of file status:', thirdReceipt.status.toString());
+    // append fourth part of bytecode
+    const fourthReceipt = await appendFile(client, bytecodeFileId, bytecodeFourthQuarter, fileKey);
+    console.log('Appending Fourth part of file status:', fourthReceipt.status.toString());
+    // append fifth part of bytecode
+    const fifthReceipt = await appendFile(client, bytecodeFileId, bytecodeFifthQuarter, fileKey);
+    console.log('Appending Fifth part of file status:', fifthReceipt.status.toString());
+
+
+    console.log('\n////////// Swap Contract ContractCreateTransaction');
+
+    
+    const contractTx = await new ContractCreateTransaction()
+        .setBytecodeFileId(bytecodeFileId)  // Hedera file ID containing bytecode
+        .setGas(1000000) // gas to instantiate contract (for transaction)
+        .setConstructorParameters(new ContractFunctionParameters()
+         .addAddress(tokenAId.toSolidityAddress())
+         .addAddress(treasuryId.toSolidityAddress())
+         .addAddress(tokenBId.toSolidityAddress())
+         .addAddress(traderId.toSolidityAddress())
+         .addUint256(50)
+         ); // provide token IDs, treasury address, and address of HTS contract (so we can call it) to constructor
+    // Submit transaction to Hedera testnet and execute
+    const contractResponse = await contractTx.execute(client);
+    // Get receipt of contract create transaction
+    const contractReceipt = await contractResponse.getReceipt(client);
+    // Get smart contract ID
+    const newContractId = contractReceipt.contractId;
+    console.log('\n////////// Swap Contract Id :'+ newContractId);
+    return  newContractId
+}
+
 async function deployAllContracts() {
     //const cont1 = await deployDexContract();
     console.log('deployAllContracts called');
-    const cont2 = await deploySwapHederaContract();
-    console.log('Swap ContractId' + cont2);
+    const cont2 = await deployTokenContract();
+    console.log('deployTokenContract ContractId' + cont2);
     return cont2
     // const cont3 = await deployTokenAContract();
     // console.log('deployTokenAContract ID' + cont3);
@@ -310,18 +386,17 @@ async function deploySwapContract() {
     return  newContractId
 }
 
-async function deployTokenAContract() {
-    return '0.0.47682203';
+async function deployTokenContract() {
     const treasuryId = AccountId.fromString(process.env.TREASURY_ACCOUNT_ID);
     const treasuryKey = PrivateKey.fromString(process.env.TREASURY_PRIVATE_KEY);
     const tokenAId = TokenId.fromString(process.env.TOKEN_A_ID);
     const tokenBId = TokenId.fromString(process.env.TOKEN_B_ID);
 
-    const client = initializeTreaserClientOperator();
+    const client = initializeClientOperator();
     //return process.env.LAST_CONTRACT;
     // REMOVE ABOVE RETURN IF YOU WANT TO RE_DEPLOY THE CONTRACT
     console.log('\n////////// Creating OSR TokenA Called');
-    let contractJson = require('../artifacts/contracts/TokenA.sol/TokenA.json');
+    let contractJson = require('../artifacts/contracts/ERC20Contract.sol/ERC20Contract.json');
     console.log('\n////////// Creating OSR Called' + contractJson.bytecode);
     const bytecode = contractJson.bytecode;
 
@@ -355,8 +430,8 @@ async function deployTokenAContract() {
     // Get file ID from the receipt
     const bytecodeFileId = fileReceipt.fileId;
 
-    console.log('First part of DEX file deployed to testnet')
-    console.log('DEX smart contract byte code file ID:', bytecodeFileId.toString());
+    console.log('deployTokenContract file deployed to testnet')
+    console.log('deployTokenContract byte code file ID:', bytecodeFileId.toString());
 
     // APPEND REST OF BYTECODE TO FILE
     // append second part of bytecode
@@ -377,13 +452,8 @@ async function deployTokenAContract() {
 
     const contractTx = await new ContractCreateTransaction()
         .setBytecodeFileId(bytecodeFileId)  // Hedera file ID containing bytecode
-        .setGas(1000000) // gas to instantiate contract (for transaction)
-        .setConstructorParameters(new ContractFunctionParameters()
-            .addString('Lab49 Token A')
-            .addString('L49A')
-            .addInt256(10000)
-            //'Lab49 Token A', 'L49A'
-        ); // provide token IDs, treasury address, and address of HTS contract (so we can call it) to constructor
+        .setGas(10000000) // gas to instantiate contract (for transaction)
+         // provide token IDs, treasury address, and address of HTS contract (so we can call it) to constructor
     // Submit transaction to Hedera testnet and execute
     const contractResponse = await contractTx.execute(client);
     // Get receipt of contract create transaction
@@ -394,94 +464,14 @@ async function deployTokenAContract() {
     return  newContractId
 }
 
-async function deployTokenBContract() {
-    return '0.0.47682203';
-    const treasuryId = AccountId.fromString(process.env.TREASURY_ACCOUNT_ID);
-    const treasuryKey = PrivateKey.fromString(process.env.TREASURY_PRIVATE_KEY);
-    const tokenAId = TokenId.fromString(process.env.TOKEN_A_ID);
-    const tokenBId = TokenId.fromString(process.env.TOKEN_B_ID);
-
-    const client = initializeTreaserClientOperator();
-    //return process.env.LAST_CONTRACT;
-    // REMOVE ABOVE RETURN IF YOU WANT TO RE_DEPLOY THE CONTRACT
-    console.log('\n////////// Creating OSR TokenB Called');
-    let contractJson = require('../artifacts/contracts/TokenB.sol/TokenB.json');
-    console.log('\n////////// Creating OSR Called' + contractJson.bytecode);
-    const bytecode = contractJson.bytecode;
-
-    console.log('\n////////// Creating and uploading smart contract files to Hedera testnet //////////');
-    console.log('\n////////// Uploading DEX contract //////////');
-    console.log('DEX contract file is too large so uploading in chunks');
-
-    const bytecodeLength = bytecode.length;
-
-    bytecodeFirstQuarter = bytecode.substring(0, bytecodeLength / 5);
-    bytecodeSecondQuarter = bytecode.substring(bytecodeLength / 5, bytecodeLength * 2 / 5);
-    bytecodeThirdQuarter = bytecode.substring(bytecodeLength * 2 / 5, bytecodeLength * 3 / 5);
-    bytecodeFourthQuarter = bytecode.substring(bytecodeLength * 3 / 5, bytecodeLength * 4 / 5);
-    bytecodeFifthQuarter = bytecode.substring(bytecodeLength * 4 / 5);
-
-    // Create a file on Hedera and store the hex-encoded bytecode
-    // need to sign file transaction with keys so can append other parts of bytecode to it
-    const fileKey = await PrivateKey.generateED25519();
-    const filePublicKey = fileKey.publicKey;
-
-    const fileCreateTx = new FileCreateTransaction()
-        .setKeys([filePublicKey])           // sign file with public key
-        .setContents(bytecodeFirstQuarter)
-        .freezeWith(client);
-    // sign file create transaction with fileKey (private)
-    const signTx = await fileCreateTx.sign(fileKey);
-    // Submit file to Hedera test net signing with the transaction fee payer key specified in client
-    const submitTx = await signTx.execute(client);
-    // Get receipt of the file create transaction
-    const fileReceipt = await submitTx.getReceipt(client);
-    // Get file ID from the receipt
-    const bytecodeFileId = fileReceipt.fileId;
-
-    console.log('First part of DEX file deployed to testnet')
-    console.log('DEX smart contract byte code file ID:', bytecodeFileId.toString());
-
-    // APPEND REST OF BYTECODE TO FILE
-    // append second part of bytecode
-    const secondReceipt = await appendFile(client, bytecodeFileId, bytecodeSecondQuarter, fileKey);
-    console.log('Appending Second part of file status:', secondReceipt.status.toString());
-    // append third part of bytecode
-    const thirdReceipt = await appendFile(client, bytecodeFileId, bytecodeThirdQuarter, fileKey);
-    console.log('Appending Third part of file status:', thirdReceipt.status.toString());
-    // append fourth part of bytecode
-    const fourthReceipt = await appendFile(client, bytecodeFileId, bytecodeFourthQuarter, fileKey);
-    console.log('Appending Fourth part of file status:', fourthReceipt.status.toString());
-    // append fifth part of bytecode
-    const fifthReceipt = await appendFile(client, bytecodeFileId, bytecodeFifthQuarter, fileKey);
-    console.log('Appending Fifth part of file status:', fifthReceipt.status.toString());
-
-    console.log('\n////////// Instantiate contract instance for deployed files //////////');
-    console.log('\n////////// Instantiating DEX contract //////////');
-
-    const contractTx = await new ContractCreateTransaction()
-        .setBytecodeFileId(bytecodeFileId)  // Hedera file ID containing bytecode
-        .setGas(1000000) // gas to instantiate contract (for transaction)
-        .setConstructorParameters(new ContractFunctionParameters()
-        .addString('Lab49 Token A')
-        .addString('L49A')
-        .addInt256(10000)
-        ); // provide token IDs, treasury address, and address of HTS contract (so we can call it) to constructor
-    // Submit transaction to Hedera testnet and execute
-    const contractResponse = await contractTx.execute(client);
-    // Get receipt of contract create transaction
-    const contractReceipt = await contractResponse.getReceipt(client);
-    // Get smart contract ID
-    const newContractId = contractReceipt.contractId;
-
-    return  newContractId;
-}
 
 module.exports =  {
     deployAllContracts,
     deploySwapHederaContract,
+    deployTokenContract,
     addLiquidity,
     swapTokens,
-    approveTransaction
+    approveTransaction,
+    deployNewSwapContract
 }
 
