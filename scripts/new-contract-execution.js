@@ -38,7 +38,7 @@ let tokenC = TokenId.fromString("0.0.47652786").toSolidityAddress();
 let tokenD = TokenId.fromString("0.0.47652784").toSolidityAddress();
 const treasure = AccountId.fromString("0.0.47645191").toSolidityAddress();
 const treasureKey = PrivateKey.fromString("308ed38983d9d20216d00371e174fe2d475dd32ac1450ffe2edfaab782b32fc5");
-const contractId = "0.0.47822056";//"0.0.47717682";
+const contractId = "0.0.47835529";//"0.0.47717682";
 
 const trader  = AccountId.fromString(process.env.TRADER_ACCOUNT_ID).toSolidityAddress();
 const traderKey = PrivateKey.fromString(process.env.TRADER_PRIVATE_KEY);
@@ -232,8 +232,8 @@ const getBalanceFromContract = async () => {
 };
 
 const addNewLiquidityABTreasure = async () => {
-    const tokenAQty = 100;
-    const tokenBQty = 150;
+    const tokenAQty = 150;
+    const tokenBQty = 100;
     console.log(`Adding ${tokenAQty} units of token A and ${tokenBQty} units of token B to the pool.`);
     const addLiquidityTx = await new ContractExecuteTransaction()
     .setContractId(contractId)
@@ -241,8 +241,8 @@ const addNewLiquidityABTreasure = async () => {
     .setFunction("addLiquidity",
         new ContractFunctionParameters()
         .addAddress(treasure)
-        .addAddress(tokenB)
         .addAddress(tokenA)
+        .addAddress(tokenB)
         .addInt64(tokenAQty)
         .addInt64(tokenBQty))
     .freezeWith(client) 
@@ -259,7 +259,7 @@ const addNewLiquidityABTreasure = async () => {
 };
 
 const addNewLiquidityCDTreasure = async () => {
-    const tokenCQty = 100;
+    const tokenCQty = 50;
     const tokenDQty = 100;
     console.log(`Adding ${tokenCQty} units of token C and ${tokenDQty} units of token D to the pool.`);
     const addLiquidityTx = await new ContractExecuteTransaction()
@@ -311,8 +311,8 @@ const swapTokenAtoB = async () => {
 };
 
 const swapTokenCtoD = async () => {
-    const tokenCQty = 2;
-    const tokenDQty = 0;
+    const tokenCQty = 0;
+    const tokenDQty = 2;
     console.log(`Swapping a ${tokenCQty} units of token A from the pool.`);
     //Need to pass different token B address so that only swap of token A is considered.
     //tokenB = TokenId.fromString("0.0.47646100").toSolidityAddress();
@@ -322,10 +322,10 @@ const swapTokenCtoD = async () => {
     .setFunction("swapToken",
         new ContractFunctionParameters()
         .addAddress(treasure)
-        .addAddress(tokenC)
         .addAddress(tokenD)
-        .addInt64(tokenCQty)
-        .addInt64(tokenDQty))
+        .addAddress(tokenC)
+        .addInt64(tokenDQty)
+        .addInt64(tokenCQty))
     .freezeWith(client) 
     .sign(treasureKey); 
     const swapTokenTx = await swapToken.execute(client);
@@ -367,14 +367,14 @@ const getContributorTokenShare = async () => {
 
 async function main() {
      //await getBalances();
-    await deployNewSwapContract();
+    //await deployNewSwapContract();
 
-    // await addNewLiquidityABTreasure();
-    // await addNewLiquidityCDTreasure();
+    //  await addNewLiquidityABTreasure();
+    //  await addNewLiquidityCDTreasure();
     //await getBalanceFromContract();
         //  await getBalances();
     //await swapTokenAtoB();
-    //await swapTokenCtoD();
+    await swapTokenCtoD();
     //await getBalances();
     //  await createLiquidityPool();
     //  await addLiquidity();

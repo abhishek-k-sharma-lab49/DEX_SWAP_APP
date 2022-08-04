@@ -8,6 +8,19 @@ contract SwapHederaTokens is HederaTokenService {
     
     mapping (address => int) contractBalance;
     uint private unlocked = 1;
+    address creator;
+    modifier onlyOwner {
+      require(msg.sender == creator, "Only owner can change the contract.");
+      _;
+   }
+
+   modifier lock {
+        require(unlocked == 1, 'UniswapV2: LOCKED');
+        unlocked = 0;
+        _;
+        unlocked = 1;
+    }
+
 
     struct Pair {
         Token token0;
@@ -21,24 +34,15 @@ contract SwapHederaTokens is HederaTokenService {
 
     struct LiquidityContributor {
        mapping (address => mapping (address => Pair)) userTokenPairs;
+       mapping (address => mapping (address => bool)) tokenPairsAvailabe;
     }
 
-    address creator;
+    
+    mapping (address => LiquidityContributor) userLiquidityPairs;
+    mapping (address => bool) userLiquidityPairAvailable;
 
     mapping (address => mapping (address => Pair)) tokenPairs;
     mapping (address => mapping (address => bool)) tokenPairsAvailabe;
-
-    modifier onlyOwner {
-      require(msg.sender == creator, "Only owner can change the contract.");
-      _;
-   }
-
-   modifier lock {
-        require(unlocked == 1, 'UniswapV2: LOCKED');
-        unlocked = 0;
-        _;
-        unlocked = 1;
-    }
 
     function pairAvailable(address _token0, address _token1) internal view returns(bool) {
         (address token0, address token1) = _token0 < _token1 ? (_token0, _token1) : (_token1, _token0);
@@ -54,7 +58,7 @@ contract SwapHederaTokens is HederaTokenService {
     function pairQuantityAvailable(address _token0, address _token1, int64 _amount) internal view returns(bool) {
         (address token0, address token1) = _token0 < _token1 ? (_token0, _token1) : (_token1, _token0);
         if (tokenPairsAvailabe[token0][token1]) {
-           int64 tokenAmount = tokenPairs[token0][token1].token1.tokenQty;
+           int64 tokenAmount = token0 == _token0 ? tokenPairs[token0][token1].token1.tokenQty : tokenPairs[token0][token1].token0.tokenQty;
            if (tokenAmount >= _amount) {
                 return true;
            }
@@ -73,6 +77,19 @@ contract SwapHederaTokens is HederaTokenService {
     function getPoolBalance( address _token0, address _token1) public view returns (int64, int64) {
         return (tokenPairs[_token0][_token1].token0.tokenQty, tokenPairs[_token0][_token1].token1.tokenQty);
     }
+
+    // function updateUserLiquidityInfo(address fromAccount, address _token0, address _token1, int64 _token0Qty, int64 _token1Qty, Pair memory pair) internal {
+    //     if (userLiquidityPairAvailable[fromAccount]) {
+    //         if (userLiquidityPairs[fromAccount].tokenPairsAvailabe[_token0][_token1]) {
+                
+    //         } else {
+    //             LiquidityContributor memory contributor = LiquidityContributor().push();
+    //             contributor.userTokenPairs[_token0][_token1] = pair;
+    //             userLiquidityPairs[fromAccount] = contributor;
+    //         }
+    //     }
+        
+    // }
 
     function addLiquidity(address fromAccount, address _token0, address _token1, int64 _token0Qty, int64 _token1Qty) public returns(int64, int64,string memory){
         (address token0, address token1, int64 token0Qty, int64 token1Qty) = _token0 < _token1 ? (_token0, _token1, _token0Qty, _token1Qty ) : (_token1, _token0, _token1Qty, _token0Qty);
@@ -102,13 +119,15 @@ contract SwapHederaTokens is HederaTokenService {
 
     function swapToken(address to, address _tokenA, address _tokenB, int64 _deltaAQty, int64 _deltaBQty) external {
         require(pairAvailable(_tokenA, _tokenB), "Pair pool not available");
-        require(pairQuantityAvailable(_tokenA, _tokenB, _deltaBQty), "Pair Quantity not available");
-        int64 deltaBQty;
-        deltaBQty = (tokenPairs[_tokenA][_tokenB].token1.tokenQty * _deltaAQty) / (tokenPairs[_tokenA][_tokenB].token0.tokenQty + _deltaAQty);
+        int64 deltaBQty;       
         if (tokenPairsAvailabe[_tokenA][_tokenB]) {
+            deltaBQty = (tokenPairs[_tokenA][_tokenB].token1.tokenQty * _deltaAQty) / (tokenPairs[_tokenA][_tokenB].token0.tokenQty + _deltaAQty);
+            require(pairQuantityAvailable(_tokenA, _tokenB, deltaBQty), "Pair Quantity not available");
             tokenPairs[_tokenA][_tokenB].token0.tokenQty += _deltaAQty;
             tokenPairs[_tokenA][_tokenB].token1.tokenQty -= deltaBQty;
         } else if (tokenPairsAvailabe[_tokenB][_tokenA]) {
+            deltaBQty = (tokenPairs[_tokenB][_tokenA].token0.tokenQty * _deltaAQty) / (tokenPairs[_tokenB][_tokenA].token1.tokenQty + _deltaAQty);
+            require(pairQuantityAvailable(_tokenA, _tokenB, deltaBQty), "Pair Quantity not available");
             tokenPairs[_tokenB][_tokenA].token0.tokenQty -= deltaBQty;
             tokenPairs[_tokenB][_tokenA].token1.tokenQty += _deltaAQty; 
         }
